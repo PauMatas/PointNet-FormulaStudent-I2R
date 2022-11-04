@@ -1,17 +1,26 @@
 import sqlite3 as sql
-from datetime import datetime
 from typing import List
 
 DATA_BASE_PATH = '../data/3dPointCloud.db'
+
 NUMERIC_TYPES = ['INTEGER', 'REAL', 'NUMERIC', 'DOUBLE', 'FLOAT', 'DECIMAL']
 
+
 class Column:
-    def __init__(self, name, type):
+    """Column class"""
+
+    def __init__(self, name: str, type: str):
         self.name = name
         self.type = type.upper()
         self.create_query = f"{self.name} {self.type}"
 
+
 class Table:
+    """Table class
+    Created to be inherited by other classes providing a base for table
+    definition, management and connection to the database
+    """
+
     def __init__(self, name: str, columns: List[Column], creation_params: List[str] = []):
         self.name = name
         self.columns = columns
@@ -19,23 +28,21 @@ class Table:
 
     def create_table(self):
         """Create a table"""
-        conn = sql.connect(DATA_BASE_PATH)
-        cursor = conn.cursor()
 
         table_description = ', '.join(
             [column.create_query for column in self.columns] + self.creation_params
         )
+
+        conn = sql.connect(DATA_BASE_PATH)
+        cursor = conn.cursor()
         cursor.execute(
             f"CREATE TABLE {self.name}({table_description})"
         )
-
         conn.commit()
         conn.close()
 
     def insert_data(self, **kwargs):
         """Insert data into the table"""
-        conn = sql.connect(DATA_BASE_PATH)
-        cursor = conn.cursor()
 
         values = [
             str(kwargs[column.name])
@@ -44,12 +51,33 @@ class Table:
             for column in self.columns
         ]
         values = ', '.join(values)
+
+        conn = sql.connect(DATA_BASE_PATH)
+        cursor = conn.cursor()
         cursor.execute(f"INSERT INTO {self.name} VALUES({values})")
-        
         conn.commit()
         conn.close()
 
+    def read_rows(self) -> List[tuple]:
+        """Read all rows from the table"""
+        conn = sql.connect(DATA_BASE_PATH)
+        cursor = conn.cursor()
+        cursor.execute(f"SELECT * FROM {self.name}")
+        rows = cursor.fetchall()
+        conn.close()
+        return rows
+
+
 class PointCloudTable(Table):
+    """PointCloudTable class
+    This class is used to manage the pointclouds table which has columns:
+        - x: double
+        - y: double
+        - z: double
+        - datetime: datetime
+    And a primary key composed by x, y, z and datetime.
+    """
+
     def __init__(self):
         columns = [
             Column('x', 'DOUBLE'),
@@ -58,17 +86,20 @@ class PointCloudTable(Table):
             Column('datetime', 'DATETIME'),
         ]
 
-        super().__init__('pointclouds', columns, creation_params=['primary key (x, y, z, datetime)'])
+        super().__init__('pointclouds', columns, creation_params=[
+            'primary key (x, y, z, datetime)'])
+
+
+TABLES = [PointCloudTable]
 
 
 if __name__ == '__main__':
-    conn = sql.connect(DATA_BASE_PATH)
-    cursor = conn.cursor()
-    for table_class in [PointCloudTable]:
+    for table_class in TABLES:
         table = table_class()
         try:
-            cursor.execute(f"SELECT * FROM {table.name}")
+            main_conn = sql.connect(DATA_BASE_PATH)
+            main_cursor = main_conn.cursor()
+            main_cursor.execute(f"SELECT * FROM {table.name}")
+            main_conn.close()
         except sql.OperationalError:
             table.create_table()
-    conn.commit()
-    conn.close()
