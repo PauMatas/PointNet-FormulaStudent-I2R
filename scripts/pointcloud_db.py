@@ -1,17 +1,19 @@
 import sqlite3 as sql
 from typing import List
+from os.path import dirname, abspath, join
 
-DATA_BASE_PATH = '../data/3dPointCloud.db'
 
+DATA_BASE_PATH = join(dirname(dirname(abspath(__file__))),
+                      'data/3dPointCloud.db')
 NUMERIC_TYPES = ['INTEGER', 'REAL', 'NUMERIC', 'DOUBLE', 'FLOAT', 'DECIMAL']
 
 
 class Column:
     """Column class"""
 
-    def __init__(self, name: str, type: str):
+    def __init__(self, name: str, col_type: str):
         self.name = name
-        self.type = type.upper()
+        self.type = col_type.upper()
         self.create_query = f"{self.name} {self.type}"
 
 
