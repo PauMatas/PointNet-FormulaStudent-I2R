@@ -11,6 +11,8 @@ from geometry_msgs.msg import PointStamped
 import pointcloud_db as db
 
 
+START_TIME = None
+
 def pointcloud_subscriber_clbk(last_pointcloud):
     """Callback function for the point cloud subscriber"""
 
@@ -21,13 +23,23 @@ def pointcloud_subscriber_clbk(last_pointcloud):
     )
 
     pointcloud_table = db.PointCloudTable()
-    for x, y, z, timestamp in pointcloud_generator:
-        pointcloud_table.insert_data(
-            x=x,
-            y=y,
-            z=z,
-            datetime=datetime.fromtimestamp(timestamp)
-        )
+    pointcloud_table.insert_rows(
+        [
+            (x, y, z, datetime.fromtimestamp(timestamp))
+            for x, y, z, timestamp
+            in pointcloud_generator
+        ])
+
+    clbk_time = datetime.fromtimestamp(
+        # Convert nanoseconds to seconds
+        int(str(last_pointcloud.header.stamp)) // 1000000000
+    )
+
+    global START_TIME
+    if START_TIME is None:
+        START_TIME = clbk_time
+
+    print(f'Run time processed: {(clbk_time - START_TIME).total_seconds()} s', end='\r')
 
 odomList = []
 def position_subscriber_clbk(last_odom):

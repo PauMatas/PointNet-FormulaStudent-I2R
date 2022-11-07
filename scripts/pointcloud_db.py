@@ -43,8 +43,8 @@ class Table:
         conn.commit()
         conn.close()
 
-    def insert_data(self, **kwargs):
-        """Insert data into the table"""
+    def insert_row(self, **kwargs):
+        """Insert a row into the table"""
 
         values = [
             str(kwargs[column.name])
@@ -57,6 +57,17 @@ class Table:
         conn = sql.connect(DATA_BASE_PATH)
         cursor = conn.cursor()
         cursor.execute(f"INSERT INTO {self.name} VALUES({values})")
+        conn.commit()
+        conn.close()
+
+    def insert_rows(self, rows: List[tuple]):
+        """Insert multiple rows into the table"""
+
+        conn = sql.connect(DATA_BASE_PATH)
+        cursor = conn.cursor()
+        question_marks = ', '.join(['?' for _ in range(len(self.columns))])
+        query = f"INSERT INTO {self.name} VALUES ({question_marks})"
+        cursor.executemany(query, rows)
         conn.commit()
         conn.close()
 
