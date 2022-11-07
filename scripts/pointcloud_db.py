@@ -43,8 +43,8 @@ class Table:
         conn.commit()
         conn.close()
 
-    def insert_data(self, **kwargs):
-        """Insert data into the table"""
+    def insert_row(self, **kwargs):
+        """Insert a row into the table"""
 
         values = [
             str(kwargs[column.name])
@@ -60,6 +60,19 @@ class Table:
         conn.commit()
         conn.close()
 
+    def insert_rows(self, rows: List[tuple]):
+        """Insert multiple rows into the table"""
+
+        conn = sql.connect(DATA_BASE_PATH)
+        cursor = conn.cursor()
+        question_marks = ', '.join(['?' for _ in range(len(self.columns))])
+        query = f"INSERT INTO {self.name} VALUES ({question_marks})"
+        cursor.executemany(query, rows)
+        conn.commit()
+        conn.close()
+
+
+
     def read_rows(self) -> List[tuple]:
         """Read all rows from the table"""
         conn = sql.connect(DATA_BASE_PATH)
@@ -71,7 +84,7 @@ class Table:
 
 
 class PointCloudTable(Table):
-    """PointCloudTable class
+    """ PointCloudTable class
     This class is used to manage the pointclouds table which has columns:
         - x: double
         - y: double
@@ -90,6 +103,42 @@ class PointCloudTable(Table):
 
         super().__init__('pointclouds', columns, creation_params=[
             'primary key (x, y, z, datetime)'])
+
+
+class PoseTable(Table):
+    """ PoseTable class
+    This class is used to manage the pointclouds table which has columns:
+        - pos_x: double
+        - pos_y: double
+        - pos_z: double
+
+        - ori_x: double
+        - ori_y: double
+        - ori_z: double
+        - ori_w: double
+
+        - datetime: datetime
+    And a primary key composed by x, y, z and datetime.
+    """
+
+    def __init__(self):
+        columns = [
+            Column('pos_x', 'DOUBLE'),
+            Column('pos_y', 'DOUBLE'),
+            Column('pos_z', 'DOUBLE'),
+
+            Column('ori_x', 'DOUBLE'),
+            Column('ori_y', 'DOUBLE'),
+            Column('ori_z', 'DOUBLE'),
+            Column('ori_w', 'DOUBLE'),
+
+            Column('datetime', 'DATETIME'),
+        ]
+
+        print("PoseTable Instantiated")
+
+        super().__init__('positions', columns, creation_params=[
+            'primary key (pos_x, pos_y, pos_z, datetime)'])
 
 
 TABLES = [PointCloudTable]
