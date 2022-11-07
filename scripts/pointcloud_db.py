@@ -9,7 +9,7 @@ NUMERIC_TYPES = ['INTEGER', 'REAL', 'NUMERIC', 'DOUBLE', 'FLOAT', 'DECIMAL']
 
 
 class Column:
-    """Column class"""
+    """ Column class """
 
     def __init__(self, name: str, col_type: str):
         self.name = name
