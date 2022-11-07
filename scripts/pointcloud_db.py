@@ -125,8 +125,25 @@ class PointCloudTable(Table):
         conn.close()
         return rows
 
+class ConePositionTable(Table):
+    """ConePositionTable class
+    This class is used to manage the cones table which has columns:
+        - x: double
+        - y: double
+        - z: double
+    """
 
-TABLES = [PointCloudTable]
+    def __init__(self):
+        columns = [
+            Column('x', 'DOUBLE'),
+            Column('y', 'DOUBLE'),
+            Column('z', 'DOUBLE'),
+        ]
+
+        super().__init__('cones', columns)
+
+
+TABLES = [PointCloudTable, ConePositionTable]
 
 
 def get_run_bounding_boxs(run_id: int) -> List[List[tuple]]:

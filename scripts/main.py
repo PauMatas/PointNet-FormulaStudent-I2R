@@ -58,11 +58,12 @@ def position_subscriber_clbk(last_odom):
     
 
 def cone_position_clbk(cone_point):
-    print('Cone position received')
-    print('[cone_point] Header: ', cone_point.header.stamp)
-    print('x: ', cone_point.point.x)
-    print('y: ', cone_point.point.y)
-    print('z: ', cone_point.point.z)
+    x = cone_point.point.x
+    y = cone_point.point.y
+    z = cone_point.point.z
+
+    cone_table = db.ConePositionTable()
+    cone_table.insert_row(x=x, y=y, z=z)
     
 
 def main():
