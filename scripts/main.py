@@ -57,23 +57,27 @@ def position_subscriber_clbk(last_odom):
 
     timestamp = last_odom.header.stamp
 
-    # clbk_time = datetime.fromtimestamp(timestamp)
+    # Get time from stamp in seconds
+    odom_time = datetime.fromtimestamp(int(str(timestamp))  / 1000000000)
+    # print(last_odom.header.stamp)
+    # print(odom_time)
 
     clbk_time = datetime.fromtimestamp(
         # Convert nanoseconds to seconds
         int(str(last_odom.header.stamp)) // 1000000000
-    )   
+    )
+
 
     print(pos_x, pos_y, pos_z, 
           ori_x, ori_y, ori_z, ori_w,
-          clbk_time)
+          odom_time)
 
     position_table = db.PoseTable()
     position_table.insert_rows(
         [
             (pos_x, pos_y, pos_z, 
              ori_x, ori_y, ori_z, ori_w,
-             clbk_time)
+             odom_time)
         ])
 
     global START_TIME

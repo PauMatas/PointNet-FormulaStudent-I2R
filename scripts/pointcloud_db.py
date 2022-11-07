@@ -5,6 +5,10 @@ from os.path import dirname, abspath, join
 
 DATA_BASE_PATH = join(dirname(dirname(abspath(__file__))),
                       'data/3dPointCloud.db')
+
+# DATA_BASE_PATH = join(dirname(dirname(abspath(__file__))),
+#                       'data/position.db')
+
 NUMERIC_TYPES = ['INTEGER', 'REAL', 'NUMERIC', 'DOUBLE', 'FLOAT', 'DECIMAL']
 
 
@@ -141,7 +145,7 @@ class PoseTable(Table):
             'primary key (pos_x, pos_y, pos_z, datetime)'])
 
 
-TABLES = [PointCloudTable]
+TABLES = [PointCloudTable, PoseTable]
 
 
 if __name__ == '__main__':
