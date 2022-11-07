@@ -82,6 +82,25 @@ class Table:
         conn.close()
         return rows
 
+    def filter(self, **kwargs):
+        """Filter rows from the table"""
+
+        conditions = [
+            f"{column.name} = {str(kwargs[column.name])}"
+            if column.type in NUMERIC_TYPES
+            else f"{column.name} = '{str(kwargs[column.name])}'"
+            for column in self.columns
+            if column.name in kwargs
+        ]
+        conditions = ' AND '.join(conditions)
+
+        conn = sql.connect(DATA_BASE_PATH)
+        cursor = conn.cursor()
+        cursor.execute(f"SELECT * FROM {self.name} WHERE {conditions}")
+        rows = cursor.fetchall()
+        conn.close()
+        return rows
+
 
 class PointCloudTable(Table):
     """PointCloudTable class
