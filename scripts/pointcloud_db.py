@@ -4,8 +4,10 @@ from os.path import dirname, abspath, join
 
 
 DATA_BASE_PATH = join(dirname(dirname(abspath(__file__))),
-                      'data/3dPointCloud.db')
+                      'data/3dPointCloud.sqlite3')
 NUMERIC_TYPES = ['INTEGER', 'REAL', 'NUMERIC', 'DOUBLE', 'FLOAT', 'DECIMAL']
+
+CONE_RADIUS = 10
 
 
 class Column:
@@ -102,9 +104,40 @@ class PointCloudTable(Table):
         super().__init__('pointclouds', columns, creation_params=[
             'primary key (x, y, z, datetime)'])
 
+    def bounding_box(self, run_id, cone_position, radius):
+        """Return the bounding box for a given cone position and a radius over a run"""
+
+        x, y, z = cone_position
+
+        query = f"""
+            SELECT x, y, z, datetime
+            FROM pointclouds
+            WHERE
+                x BETWEEN {x - radius} AND {x + radius} AND
+                y BETWEEN {y - radius} AND {y + radius} AND
+                run_id = {run_id}
+        """
+
+        conn = sql.connect(DATA_BASE_PATH)
+        cursor = conn.cursor()
+        cursor.execute(query)
+        rows = cursor.fetchall()
+        conn.close()
+        return rows
+
 
 TABLES = [PointCloudTable]
 
+
+def get_run_bounding_boxs(run_id: int) -> List[List[tuple]]:
+    """Get the bounding boxs of a run"""
+
+    pos_table = ConePositionTable()
+    pc_table = PointCloudTable()
+
+    cone_positions = pos_table.filter(run_id=run_id)
+    
+    return [pc_table.bounding_box(run_id, cone_position, CONE_RADIUS) for cone_position in cone_positions]
 
 if __name__ == '__main__':
     for table_class in TABLES:
