@@ -4,3 +4,5 @@ __pycache__/
 # SQLite #
 *.db
 *.db-journal
+*.sqlite3
+*.sqlite3-journal

@@ -41,7 +41,6 @@ def pointcloud_subscriber_clbk(last_pointcloud):
 
     print(f'Run time processed: {(clbk_time - START_TIME).total_seconds()} s', end='\r')
 
-
 def position_subscriber_clbk(last_odom):
     """Callback function for the position subscriber"""
 
@@ -59,8 +58,6 @@ def position_subscriber_clbk(last_odom):
 
     # Get time from stamp in seconds
     odom_time = datetime.fromtimestamp(int(str(timestamp))  / 1000000000)
-    # print(last_odom.header.stamp)
-    # print(odom_time)
 
     clbk_time = datetime.fromtimestamp(
         # Convert nanoseconds to seconds
@@ -88,14 +85,10 @@ def position_subscriber_clbk(last_odom):
     
 
 def cone_position_clbk(cone_point):
-
     x, y, z = cone_point.point
 
-    print('Cone position received')
-    print('[cone_point] Header: ', cone_point.header.stamp)
-    print('x: ', cone_point.point.x)
-    print('y: ', cone_point.point.y)
-    print('z: ', cone_point.point.z)
+    cone_table = db.ConePositionTable()
+    cone_table.insert_row(x=x, y=y, z=z)
     
 
 def main():
@@ -105,7 +98,7 @@ def main():
     print("Dataset construction node initialised.")
 
     # LiDAR Output Subscriber
-    # rospy.Subscriber('limovelo/full_pcl', PointCloud2, pointcloud_subscriber_clbk, buff_size=10000)
+    rospy.Subscriber('limovelo/full_pcl', PointCloud2, pointcloud_subscriber_clbk, buff_size=10000)
 
     # LIMOVelo State Subscriber
     rospy.Subscriber('limovelo/state', Odometry, position_subscriber_clbk, buff_size=10000)
