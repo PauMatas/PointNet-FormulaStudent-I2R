@@ -124,18 +124,17 @@ class PointCloudTable(Table):
         super().__init__('pointclouds', columns, creation_params=[
             'primary key (x, y, z, datetime)'])
 
-    def bounding_box(self, run_id, cone_position, radius):
+    def bounding_box(self, cone_position, radius):
         """Return the bounding box for a given cone position and a radius over a run"""
 
         x, y, z = cone_position
 
         query = f"""
-            SELECT x, y, z, datetime
+            SELECT x, y, z
             FROM pointclouds
             WHERE
                 x BETWEEN {x - radius} AND {x + radius} AND
-                y BETWEEN {y - radius} AND {y + radius} AND
-                run_id = {run_id}
+                y BETWEEN {y - radius} AND {y + radius}
         """
 
         conn = sql.connect(DATA_BASE_PATH)
@@ -176,7 +175,7 @@ class PoseTable(Table):
             Column('datetime', 'DATETIME'),
         ]
 
-        print("PoseTable Instantiated")
+        # print("PoseTable Instantiated")
 
         super().__init__('positions', columns, creation_params=[
             'primary key (pos_x, pos_y, pos_z, datetime)'])

@@ -65,9 +65,9 @@ def position_subscriber_clbk(last_odom):
     )
 
 
-    print(pos_x, pos_y, pos_z, 
-          ori_x, ori_y, ori_z, ori_w,
-          odom_time)
+    # print(pos_x, pos_y, pos_z, 
+    #       ori_x, ori_y, ori_z, ori_w,
+    #       odom_time)
 
     position_table = db.PoseTable()
     position_table.insert_rows(
@@ -85,7 +85,10 @@ def position_subscriber_clbk(last_odom):
     
 
 def cone_position_clbk(cone_point):
-    x, y, z = cone_point.point
+    """Callback function for the cone position subscriber"""
+    x = cone_point.point.x
+    y = cone_point.point.y
+    z = cone_point.point.z
 
     cone_table = db.ConePositionTable()
     cone_table.insert_row(x=x, y=y, z=z)
