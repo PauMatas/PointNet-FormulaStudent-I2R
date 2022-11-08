@@ -202,12 +202,31 @@ class ConePositionTable(Table):
 def get_run_bounding_boxes(run_id: int) -> List[List[tuple]]:
     """Get the bounding boxs of a run"""
 
-    pos_table = ConePositionTable()
+    cone_table = ConePositionTable()
     pc_table = PointCloudTable()
 
-    cone_positions = pos_table.filter(run_id=run_id)
+    cone_positions = cone_table.filter(run_id=run_id)
     
     return [pc_table.bounding_box(run_id, cone_position, CONE_RADIUS) for cone_position in cone_positions]
+
+
+def get_run_progressive_bounding_boxes(run_id: int) -> List[List[tuple]]:
+    """Get the progressive bounding boxs of a run"""
+    # PSEUDOCODE
+    # cone_table = ConePositionTable()
+    # pos_table = PoseTable()
+    # pc_table = PointCloudTable()
+
+    # hist = []
+    # for position in pos_table.get_rows():
+    #     for cone_position in cone_table.filter(run_id=run_id):
+    #         if cone_position in pc_table.filter(run_id=run_id, datetime<=position[3]):
+    #             # El con ja ha aparegut
+    #             hist.append(
+    #               len(pc._table.bounding_box(cone_position, CONE_RADIUS, abans_de= position[3])),
+    #               distancia
+    #             )
+    # return hist
     
 
 TABLES = [PointCloudTable, PoseTable, ConePositionTable]
