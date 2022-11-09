@@ -1,10 +1,12 @@
+import numpy as np
 import sqlite3 as sql
 from typing import List
 from os.path import dirname, abspath, join
 
 
 DATA_BASE_PATH = join(dirname(dirname(abspath(__file__))),
-                      'data/3dPointCloud.sqlite3')
+                      'data/Complete-3dPointCloud.sqlite3')
+                      
 NUMERIC_TYPES = ['INTEGER', 'REAL', 'NUMERIC', 'DOUBLE', 'FLOAT', 'DECIMAL']
 
 CONE_RADIUS = 10
@@ -124,17 +126,20 @@ class PointCloudTable(Table):
         super().__init__('pointclouds', columns, creation_params=[
             'primary key (x, y, z, datetime)'])
 
-    def bounding_box(self, cone_position, radius):
+    def bounding_box(self, cone_position, radius, pos_timestamp, delta):
         """Return the bounding box for a given cone position and a radius over a run"""
 
         x, y, z = cone_position
+
+        pos_timestamp
 
         query = f"""
             SELECT x, y, z
             FROM pointclouds
             WHERE
                 x BETWEEN {x - radius} AND {x + radius} AND
-                y BETWEEN {y - radius} AND {y + radius}
+                y BETWEEN {y - radius} AND {y + radius} AND
+                timestamp BETWEEN DATEADD(ms, {-delta}, {pos_timestamp}) AND DATEADD(ms, {delta}, {pos_timestamp})
         """
 
         conn = sql.connect(DATA_BASE_PATH)
@@ -227,6 +232,43 @@ def get_run_progressive_bounding_boxes(run_id: int) -> List[List[tuple]]:
     #               distancia
     #             )
     # return hist
+
+def get_dist_cone_car(position, cone_position):
+    x_car, y_car, z_car = position
+    x_cone, y_cone, z_cone = cone_position
+    
+    dist = np.sqrt((x_car-x_cone)**2 + (y_car-y_cone)**2 + (z_car-z_cone)**2)
+    return dist
+
+# def get_run_progressive_bounding_boxes(run_id: int) -> List[List[tuple]]:
+def get_run_progressive_bounding_boxes():
+    """Get the progressive bounding boxs of a run"""
+    # PSEUDOCODE
+    cone_table = ConePositionTable()
+    pos_table = PoseTable()
+    pc_table = PointCloudTable()
+
+    hist = []
+    for position in pos_table.read_rows():
+        pos_timestamp = position[7]
+
+        for cone_position in cone_table.read_rows():
+            cone_pts = pc_table.bounding_box(cone_position, 0.15, pos_timestamp, 100)
+
+            dist_car_cone = get_dist_cone_car(position, cone_position)
+
+            print("Cone PTS", len(cone_pts), " | Dist Car Cone: ", dist_car_cone)
+            hist.append(len(cone_pts), dist_car_cone)
+
+            # if cone_position in pc_table.filter(run_id=run_id, datetime<=position[3]):
+            #     # El con ja ha aparegut
+
+            #     {}
+            #     hist.append(
+            #       len(pc._table.bounding_box(cone_position, CONE_RADIUS, abans_de= position[3])),
+            #       distancia
+            #     )
+    return hist
     
 
 TABLES = [PointCloudTable, PoseTable, ConePositionTable]
