@@ -6,3 +6,6 @@ __pycache__/
 *.db-journal
 *.sqlite3
 *.sqlite3-journal
+
+# Jupyter Notebook #
+.ipynb_checkpoints

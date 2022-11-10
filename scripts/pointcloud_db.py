@@ -1,5 +1,5 @@
 import sqlite3 as sql
-from typing import List
+from typing import List, Tuple
 from os.path import dirname, abspath, join
 from datetime import datetime
 import numpy as np
@@ -76,30 +76,20 @@ class Table:
         conn.close()
 
 
-    def read_rows(self) -> List[tuple]:
+    def read_rows(self, **kwargs) -> List[tuple]:
         """Read all rows from the table"""
+        projection = self._get_projection(kwargs)
+        order_by = self._get_order_by(kwargs)
+
+        query = f"SELECT {projection} FROM {self.name}"
+        query += f" ORDER BY {order_by}" if 'order_by' in kwargs else ''
+
         conn = sql.connect(DATA_BASE_PATH)
         cursor = conn.cursor()
-        cursor.execute(f"SELECT * FROM {self.name}")
+        cursor.execute(query)
         rows = cursor.fetchall()
         conn.close()
         return rows
-
-    def _get_projection(self, kwargs) -> str:
-        """Get projection of a filter query"""
-        if 'projection' in kwargs:
-            projection = kwargs['projection']
-            if isinstance(projection, list):
-                for proj in projection:
-                    if proj not in [column.name for column in self.columns]:
-                        raise ValueError(f"Column {proj} does not exist")
-                return ', '.join(projection)
-            if isinstance(projection, str):
-                if projection not in [column.name for column in self.columns]:
-                    raise ValueError(f"Column {projection} does not exist")
-                return projection
-            raise TypeError(f"Projection must be a list or a string, not {type(projection)}")
-        return '*'
 
     def filter(self, **kwargs):
         """Filter rows from the table"""
@@ -114,13 +104,50 @@ class Table:
         conditions = ' AND '.join(conditions)
 
         projection = self._get_projection(kwargs)
+        order_by = self._get_order_by(kwargs)
+
+        query = f"SELECT {projection} FROM {self.name}"
+        query += f" WHERE {conditions}" if conditions else ''
+        query += f" ORDER BY {order_by}" if 'order_by' in kwargs else ''
 
         conn = sql.connect(DATA_BASE_PATH)
         cursor = conn.cursor()
-        cursor.execute(f"SELECT {projection} FROM {self.name} WHERE {conditions}")
+        cursor.execute(query)
         rows = cursor.fetchall()
         conn.close()
         return rows
+
+    def _get_projection(self, kwargs) -> str:
+        """Get projection of a query"""
+        if 'projection' in kwargs:
+            projection = kwargs['projection']
+            if isinstance(projection, list):
+                for proj in projection:
+                    if proj not in [column.name for column in self.columns]:
+                        raise ValueError(f"Column {proj} does not exist")
+                return ', '.join(projection)
+            if isinstance(projection, str):
+                if projection not in [column.name for column in self.columns]:
+                    raise ValueError(f"Column {projection} does not exist")
+                return projection
+            raise TypeError(f"Projection must be a list or a string, not {type(projection)}")
+        return '*'
+
+    def _get_order_by(self, kwargs) -> str:
+        """Get the ordering factor of a query"""
+        if 'order_by' in kwargs:
+            order_by = kwargs['order_by']
+            if isinstance(order_by, list):
+                for order in order_by:
+                    if order not in [column.name for column in self.columns]:
+                        raise ValueError(f"Column {order} does not exist")
+                return ', '.join(order_by)
+            if isinstance(order_by, str):
+                if order_by not in [column.name for column in self.columns]:
+                    raise ValueError(f"Column {order_by} does not exist")
+                return order_by
+            raise TypeError(f"Order_by must be a list or a string, not {type(order_by)}")
+        return ''
 
 
 class PointCloudTable(Table):
@@ -166,6 +193,29 @@ class PointCloudTable(Table):
         rows = cursor.fetchall()
         conn.close()
         return rows
+
+    def bounding_box_size(self, cone_position, radius, before: datetime = None):
+        """Return the number of points in a bounding box for a given cone position and a radius over a run"""
+
+        x, y, z = cone_position
+
+        query = f"""
+            SELECT count()
+            FROM pointclouds
+            WHERE
+                x BETWEEN {x - radius} AND {x + radius} AND
+                y BETWEEN {y - radius} AND {y + radius}
+        """
+
+        if before is not None:
+            query += f" AND datetime <= '{before}'"
+
+        conn = sql.connect(DATA_BASE_PATH)
+        cursor = conn.cursor()
+        cursor.execute(query)
+        count = cursor.fetchone()[0]
+        conn.close()
+        return count
 
 
 class PoseTable(Table):
@@ -233,28 +283,32 @@ def get_run_bounding_boxes(run_id: int) -> List[List[tuple]]:
     return [pc_table.bounding_box(run_id, cone_position, CONE_RADIUS) for cone_position in cone_positions]
 
 
-def _dist_from_car_to_cone(cone_position: tuple[float, float, float], car_position: tuple[float, float, float]) -> float:
+def _dist_from_car_to_cone(cone_position: Tuple[float, float, float], car_position: Tuple[float, float, float]) -> float:
     """Compute the distance between a cone and the car"""
 
     temp = np.array(cone_position) - np.array(car_position)
     return np.sqrt(np.dot(temp.T, temp))
 
 
-def get_run_progressive_bounding_boxes(run_id: int) -> List[List[tuple]]:
-    """Get the progressive bounding boxs of a run"""
+def get_run_progressive_bounding_boxes() -> List[List[tuple]]:
+# def get_run_progressive_bounding_boxes(run_id: int) -> List[List[tuple]]:
+    """Get the progressive (every 100 positions) bounding boxs of a run"""
     cone_table = ConePositionTable()
     pos_table = PoseTable()
     pc_table = PointCloudTable()
 
     hist = []
-    for position in pos_table.get_rows():
+    for position in pos_table.read_rows(projection=['pos_x', 'pos_y', 'pos_z', 'datetime'], order_by='datetime')[::100]:
         position_datetime = position[3]
-        for cone_position in cone_table.filter(run_id=run_id):
+        print(position_datetime)
+        for cone_position in cone_table.read_rows():
+        # for cone_position in cone_table.filter(run_id=run_id):
             if (bb_len := len(pc_table.bounding_box(cone_position, CONE_RADIUS, before=position_datetime))) > 0:
-                hist.append(
+                hist.append((
                     bb_len,
-                    _dist_from_car_to_cone(cone_position, position)
-                )
+                    _dist_from_car_to_cone(cone_position, position[:3]),
+                    position_datetime
+                ))
     return hist
     
 
