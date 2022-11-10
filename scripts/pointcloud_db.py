@@ -1,15 +1,16 @@
 import sqlite3 as sql
 from typing import List, Tuple
+from datetime import datetime, timedelta
 from os.path import dirname, abspath, join
-from datetime import datetime
 import numpy as np
 
 
 DATA_BASE_PATH = join(dirname(dirname(abspath(__file__))),
-                      'data/3dPointCloud.sqlite3')
+                      'data/Complete-3dPointCloud.sqlite3')
+                      
 NUMERIC_TYPES = ['INTEGER', 'REAL', 'NUMERIC', 'DOUBLE', 'FLOAT', 'DECIMAL']
 
-CONE_RADIUS = 10
+CONE_RADIUS = 0.15
 
 
 class Column:
@@ -171,8 +172,14 @@ class PointCloudTable(Table):
         super().__init__('pointclouds', columns, creation_params=[
             'primary key (x, y, z, datetime)'])
 
-    def bounding_box(self, cone_position, radius, before: datetime = None):
-        """Return the bounding box for a given cone position and a radius over a run"""
+    def bounding_box(self, cone_position, radius, before: datetime = None, delta: int = None):
+        """Return the bounding box for a given cone position and a radius over a
+        run.
+        If a before datetime is given, the bounding box is computed over the
+        run's points previous to the given datetime. If also a delta is given,
+        the bounding box is computed over the run's points between the given
+        datetime and the datetime minus the delta.
+        """
 
         x, y, z = cone_position
 
@@ -184,8 +191,14 @@ class PointCloudTable(Table):
                 y BETWEEN {y - radius} AND {y + radius}
         """
 
-        if before is not None:
+        if before is None and delta is not None:
+            raise ValueError("If delta is given, before must be given too")
+        if before is not None and delta is None:
             query += f" AND datetime <= '{before}'"
+        elif before is not None and delta is not None:
+            interval = datetime.strptime(before, '%Y-%m-%d %H:%M:%S.%f') - timedelta(milliseconds=delta)
+            interval = str(interval)
+            query += f" AND datetime BETWEEN '{before}' AND '{interval}'"
 
         conn = sql.connect(DATA_BASE_PATH)
         cursor = conn.cursor()
@@ -194,7 +207,7 @@ class PointCloudTable(Table):
         conn.close()
         return rows
 
-    def bounding_box_size(self, cone_position, radius, before: datetime = None):
+    def bounding_box_size(self, cone_position, radius, before: datetime = None,  delta: int = None):
         """Return the number of points in a bounding box for a given cone position and a radius over a run"""
 
         x, y, z = cone_position
@@ -207,8 +220,14 @@ class PointCloudTable(Table):
                 y BETWEEN {y - radius} AND {y + radius}
         """
 
-        if before is not None:
+        if before is None and delta is not None:
+            raise ValueError("If delta is given, before must be given too")
+        if before is not None and delta is None:
             query += f" AND datetime <= '{before}'"
+        elif before is not None and delta is not None:
+            interval = datetime.strptime(before, '%Y-%m-%d %H:%M:%S.%f') - timedelta(milliseconds=delta)
+            interval = str(interval)
+            query += f" AND datetime BETWEEN '{before}' AND '{interval}'"
 
         conn = sql.connect(DATA_BASE_PATH)
         cursor = conn.cursor()
@@ -290,26 +309,26 @@ def _dist_from_car_to_cone(cone_position: Tuple[float, float, float], car_positi
     return np.sqrt(np.dot(temp.T, temp))
 
 
-def get_run_progressive_bounding_boxes() -> List[List[tuple]]:
+def get_run_progressive_bounding_boxes(position_step: int = 100, delta: int = None) -> List[List[tuple]]:
 # def get_run_progressive_bounding_boxes(run_id: int) -> List[List[tuple]]:
-    """Get the progressive (every 100 positions) bounding boxs of a run"""
+    """Get the progressive (every postition_step positions) bounding boxs of a run"""
     cone_table = ConePositionTable()
     pos_table = PoseTable()
     pc_table = PointCloudTable()
 
-    hist = []
-    for position in pos_table.read_rows(projection=['pos_x', 'pos_y', 'pos_z', 'datetime'], order_by='datetime')[::100]:
+    data = []
+    for position in pos_table.read_rows(projection=['pos_x', 'pos_y', 'pos_z', 'datetime'], order_by='datetime')[::position_step]:
         position_datetime = position[3]
-        print(position_datetime)
+        print(f'Position in datetime: {position_datetime}')
         for cone_position in cone_table.read_rows():
         # for cone_position in cone_table.filter(run_id=run_id):
-            if (bb_len := len(pc_table.bounding_box(cone_position, CONE_RADIUS, before=position_datetime))) > 0:
-                hist.append((
+            if (bb_len := pc_table.bounding_box_size(cone_position, CONE_RADIUS, before=position_datetime, delta=delta)) > 0:
+                data.append((
                     bb_len,
                     _dist_from_car_to_cone(cone_position, position[:3]),
                     position_datetime
                 ))
-    return hist
+    return data
     
 
 TABLES = [PointCloudTable, PoseTable, ConePositionTable]
