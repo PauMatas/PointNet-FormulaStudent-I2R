@@ -227,7 +227,7 @@ class PointCloudTable(Table):
         elif before is not None and delta is not None:
             interval = datetime.strptime(before, '%Y-%m-%d %H:%M:%S.%f') - timedelta(milliseconds=delta)
             interval = str(interval)
-            query += f" AND datetime BETWEEN '{before}' AND '{interval}'"
+            query += f" AND datetime BETWEEN '{interval}' AND '{before}'"
 
         conn = sql.connect(DATA_BASE_PATH)
         cursor = conn.cursor()
@@ -319,7 +319,7 @@ def get_run_progressive_bounding_boxes(position_step: int = 100, delta: int = No
     data = []
     for position in pos_table.read_rows(projection=['pos_x', 'pos_y', 'pos_z', 'datetime'], order_by='datetime')[::position_step]:
         position_datetime = position[3]
-        print(f'Position in datetime: {position_datetime}')
+        print(f'Position in datetime: {position_datetime}', end='\r')
         for cone_position in cone_table.read_rows():
         # for cone_position in cone_table.filter(run_id=run_id):
             if (bb_len := pc_table.bounding_box_size(cone_position, CONE_RADIUS, before=position_datetime, delta=delta)) > 0:
