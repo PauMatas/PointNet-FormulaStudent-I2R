@@ -7,11 +7,31 @@ from nav_msgs.msg import Odometry
 from sensor_msgs.msg import PointCloud2
 import sensor_msgs.point_cloud2 as pc2
 from geometry_msgs.msg import PointStamped
+from as_msgs.msg import ObservationArray
 
 import pointcloud_db as db
 
 
 START_TIME = None
+# Upper confidence threshold for the cones retrieved by the pcl_filtering node in order to be tagged as no-cones
+NO_CONE_THRESHOLD = 0.5
+
+
+def _time_processed_print(timestamp):
+    """Prints the time processed by the node"""
+
+    clbk_time = datetime.fromtimestamp(
+        # Convert nanoseconds to seconds
+        int(str(timestamp)) // 1000000000
+    )
+
+    global START_TIME
+    if START_TIME is None:
+        START_TIME = clbk_time
+
+    print(
+        f'Run time processed: {(clbk_time - START_TIME).total_seconds()} s      ', end='\r')
+
 
 def pointcloud_subscriber_clbk(last_pointcloud):
     """Callback function for the point cloud subscriber"""
@@ -30,16 +50,8 @@ def pointcloud_subscriber_clbk(last_pointcloud):
             in pointcloud_generator
         ])
 
-    clbk_time = datetime.fromtimestamp(
-        # Convert nanoseconds to seconds
-        int(str(last_pointcloud.header.stamp)) // 1000000000
-    )
+    _time_processed_print(last_pointcloud.header.stamp)
 
-    global START_TIME
-    if START_TIME is None:
-        START_TIME = clbk_time
-
-    print(f'Run time processed: {(clbk_time - START_TIME).total_seconds()} s', end='\r')
 
 def position_subscriber_clbk(last_odom):
     """Callback function for the position subscriber"""
@@ -57,32 +69,18 @@ def position_subscriber_clbk(last_odom):
     timestamp = last_odom.header.stamp
 
     # Get time from stamp in seconds
-    odom_time = datetime.fromtimestamp(int(str(timestamp))  / 1000000000)
-
-    clbk_time = datetime.fromtimestamp(
-        # Convert nanoseconds to seconds
-        int(str(last_odom.header.stamp)) // 1000000000
-    )
-
-
-    # print(pos_x, pos_y, pos_z, 
-    #       ori_x, ori_y, ori_z, ori_w,
-    #       odom_time)
+    odom_time = datetime.fromtimestamp(int(str(timestamp)) / 1000000000)
 
     position_table = db.PoseTable()
     position_table.insert_rows(
         [
-            (pos_x, pos_y, pos_z, 
+            (pos_x, pos_y, pos_z,
              ori_x, ori_y, ori_z, ori_w,
              odom_time)
         ])
 
-    global START_TIME
-    if START_TIME is None:
-        START_TIME = clbk_time
+    _time_processed_print(timestamp)
 
-    print(f'Run time processed: {(clbk_time - START_TIME).total_seconds()} s', end='\r')
-    
 
 def cone_position_clbk(cone_point):
     """Callback function for the cone position subscriber"""
@@ -92,7 +90,24 @@ def cone_position_clbk(cone_point):
 
     cone_table = db.ConePositionTable()
     cone_table.insert_row(x=x, y=y, z=z)
-    
+
+    _time_processed_print(cone_point.header.stamp)
+
+
+def no_cone_position_clbk(no_cone_point):
+    """Callback function for the no cone position subscriber"""
+
+    no_cone_table = db.NoConePositionTable()
+    no_cone_table.insert_rows(
+        [
+            (observation.centroid.x, observation.centroid.y, observation.centroid.z)
+            for observation
+            in no_cone_point.observations
+            if observation.confidence < NO_CONE_THRESHOLD
+        ])
+
+    _time_processed_print(no_cone_point.header.stamp)
+
 
 def main():
     """Main function"""
@@ -101,14 +116,21 @@ def main():
     print("Dataset construction node initialised.")
 
     # LiDAR Output Subscriber
-    rospy.Subscriber('limovelo/full_pcl', PointCloud2, pointcloud_subscriber_clbk, buff_size=10000)
+    rospy.Subscriber('limovelo/full_pcl', PointCloud2,
+                     pointcloud_subscriber_clbk, buff_size=10000)
 
     # LIMOVelo State Subscriber
-    rospy.Subscriber('limovelo/state', Odometry, position_subscriber_clbk, buff_size=10000)
+    rospy.Subscriber('limovelo/state', Odometry,
+                     position_subscriber_clbk, buff_size=10000)
 
     # Ground Truth Cone Point
-    rospy.Subscriber('/clicked_point', PointStamped, cone_position_clbk, buff_size=10000)
-    
+    rospy.Subscriber('/clicked_point', PointStamped,
+                     cone_position_clbk, buff_size=10000)
+
+    # Ground Truth No-Cone Point
+    rospy.Subscriber('/AS/P/pcl_filtering/observations',
+                     ObservationArray, no_cone_position_clbk, buff_size=10000)
+
     rospy.spin()
 
 
