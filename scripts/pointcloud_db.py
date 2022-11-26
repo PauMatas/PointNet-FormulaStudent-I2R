@@ -5,12 +5,37 @@ from os.path import dirname, abspath, join
 import numpy as np
 
 
-DATA_BASE_PATH = join(dirname(dirname(abspath(__file__))),
-                      'data/Complete-3dPointCloud.sqlite3')
+DATA_BASE_PATH = join(dirname(abspath(__file__)),
+                      'Complete-3dPointCloud.sqlite3')
                       
 NUMERIC_TYPES = ['INTEGER', 'REAL', 'NUMERIC', 'DOUBLE', 'FLOAT', 'DECIMAL']
 
 CONE_RADIUS = 0.15
+
+
+class BoundingBox:
+    """ Bounding box class """
+    def __init__(self, points: List[List[float]]):
+        self.points = points
+        self.x = []
+        self.y = []
+        self.z = []
+
+        for point in points:
+            self.x.append(point[0])
+            self.y.append(point[1])
+            self.z.append(point[2])
+
+    def center(self):
+        if len(self.points) > 0:
+            mean_x = np.mean(self.x)
+            mean_y = np.mean(self.y)
+
+            self.points = [(x, y, z) for x, y, z in zip(self.x-mean_x, self.y-mean_y, self.z)]
+
+    def sample(self, n: int):
+        if len(self.points) > 0:
+            self.points = np.array(self.points)[np.random.choice(len(self.points), n, replace=(len(self.points) < n)), :]
 
 
 class Column:
@@ -172,7 +197,7 @@ class PointCloudTable(Table):
         super().__init__('pointclouds', columns, creation_params=[
             'primary key (x, y, z, datetime)'])
 
-    def bounding_box(self, cone_position, radius, before: datetime = None, delta: int = None):
+    def _bounding_box_query(self, cone_position, radius, before: datetime = None, delta: int = None) -> BoundingBox:
         """Return the bounding box for a given cone position and a radius over a
         run.
         If a before datetime is given, the bounding box is computed over the
@@ -198,14 +223,25 @@ class PointCloudTable(Table):
         elif before is not None and delta is not None:
             interval = datetime.strptime(before, '%Y-%m-%d %H:%M:%S.%f') - timedelta(milliseconds=delta)
             interval = str(interval)
-            query += f" AND datetime BETWEEN '{before}' AND '{interval}'"
+            query += f" AND datetime BETWEEN '{interval}' AND '{before}'"
 
         conn = sql.connect(DATA_BASE_PATH)
         cursor = conn.cursor()
         cursor.execute(query)
         rows = cursor.fetchall()
         conn.close()
-        return rows
+        
+        return BoundingBox([list(row) for row in rows])
+
+    def bounding_box(self, cone_position, radius, before: datetime = None, delta: int = None, sample_size: int = None) -> BoundingBox:
+        """ Return the bounding box for a given cone position and a radius over a
+        run.
+        """
+        bb = self._bounding_box_query(cone_position, radius, before, delta)
+        bb.center()
+        if sample_size is not None:
+            bb.sample(sample_size)
+        return bb.points
 
     def bounding_box_size(self, cone_position, radius, before: datetime = None,  delta: int = None):
         """Return the number of points in a bounding box for a given cone position and a radius over a run"""
@@ -309,7 +345,7 @@ def _dist_from_car_to_cone(cone_position: Tuple[float, float, float], car_positi
     return np.sqrt(np.dot(temp.T, temp))
 
 
-def get_run_progressive_bounding_boxes(position_step: int = 100, delta: int = None) -> List[List[tuple]]:
+def get_run_progressive_bounding_boxes_size(position_step: int = 100, delta: int = None) -> List[List[tuple]]:
 # def get_run_progressive_bounding_boxes(run_id: int) -> List[List[tuple]]:
     """Get the progressive (every postition_step positions) bounding boxs of a run"""
     cone_table = ConePositionTable()
@@ -322,13 +358,33 @@ def get_run_progressive_bounding_boxes(position_step: int = 100, delta: int = No
         print(f'Position in datetime: {position_datetime}', end='\r')
         for cone_position in cone_table.read_rows():
         # for cone_position in cone_table.filter(run_id=run_id):
-            if (bb_len := pc_table.bounding_box_size(cone_position, CONE_RADIUS, before=position_datetime, delta=delta)) > 0:
+            bb_len = pc_table.bounding_box_size(cone_position, CONE_RADIUS, before=position_datetime, delta=delta)
+            if bb_len > 0:
                 data.append((
                     bb_len,
                     _dist_from_car_to_cone(cone_position, position[:3]),
                     position_datetime
                 ))
     return data
+
+
+def get_accumulated_bounding_boxes(position_step: int = 100, delta: int = 5000, sample_size: int = None):
+# def get_run_progressive_bounding_boxes(run_id: int) -> List[List[tuple]]:
+    """Get the progressive (every postition_step positions) bounding boxs of a run"""
+    cone_table = ConePositionTable()
+    pos_table = PoseTable()
+    pc_table = PointCloudTable()
+
+    bbs = []
+    for position in pos_table.read_rows(projection=['pos_x', 'pos_y', 'pos_z', 'datetime'], order_by='datetime')[::position_step]:
+        position_datetime = position[3]
+        print(f'Position in datetime: {position_datetime}', end='\r')
+        for cone_position in cone_table.read_rows():
+        # for cone_position in cone_table.filter(run_id=run_id):
+            bb = pc_table.bounding_box(cone_position, CONE_RADIUS, before=position_datetime, delta=delta, sample_size=sample_size)
+            if len(bb) > 0:
+                bbs.append(bb)
+    return bbs
     
 
 TABLES = [PointCloudTable, PoseTable, ConePositionTable]
