@@ -12,3 +12,6 @@ __pycache__/
 
 # Macos #
 .DS_Store
+
+# VS Code #
+.vscode

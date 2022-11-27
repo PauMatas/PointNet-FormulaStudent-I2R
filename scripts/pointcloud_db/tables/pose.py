@@ -28,6 +28,9 @@ class PoseTable(Table):
             Column('ori_w', 'DOUBLE'),
 
             Column('datetime', 'DATETIME'),
+
+            Column('run_name', 'VARCHAR(255)'),
+            Column('filename', 'VARCHAR(255)')
         ]
 
         # print("PoseTable Instantiated")

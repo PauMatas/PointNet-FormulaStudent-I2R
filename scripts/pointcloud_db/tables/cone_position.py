@@ -13,6 +13,8 @@ class ConePositionTable(Table):
             Column('x', 'DOUBLE'),
             Column('y', 'DOUBLE'),
             Column('z', 'DOUBLE'),
+            Column('run_name', 'VARCHAR(255)'),
+            Column('filename', 'VARCHAR(255)')
         ]
 
         super().__init__('cones', columns)

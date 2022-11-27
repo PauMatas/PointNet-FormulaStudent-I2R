@@ -1,7 +1,10 @@
 import sqlite3 as sql
 from datetime import datetime, timedelta
 
-from pointcloud_db.objects import BoundingBox
+try:
+    from pointcloud_db.objects import BoundingBox
+except:
+    from objects import BoundingBox
 from .table_baseline import Table, Column, DATA_BASE_PATH
 
 class PointCloudTable(Table):
@@ -20,6 +23,8 @@ class PointCloudTable(Table):
             Column('y', 'DOUBLE'),
             Column('z', 'DOUBLE'),
             Column('datetime', 'DATETIME'),
+            Column('run_name', 'VARCHAR(255)'),
+            Column('filename', 'VARCHAR(255)')
         ]
 
         super().__init__('pointclouds', columns, creation_params=[

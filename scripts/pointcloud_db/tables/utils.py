@@ -1,11 +1,14 @@
 import numpy as np
 from typing import List, Tuple
 
-from pointcloud_db.objects import CONE_RADIUS
 from .cone_position import ConePositionTable
 from .no_cone_position import NoConePositionTable
 from .point_cloud import PointCloudTable
 from .pose import PoseTable
+try:
+    from pointcloud_db.objects import CONE_RADIUS
+except:
+    from objects import CONE_RADIUS
 
 
 def get_run_bounding_boxes(run_id: int) -> List[List[tuple]]:
