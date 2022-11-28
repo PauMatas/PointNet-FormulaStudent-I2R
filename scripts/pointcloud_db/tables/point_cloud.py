@@ -5,7 +5,7 @@ try:
     from pointcloud_db.objects import BoundingBox
 except:
     from objects import BoundingBox
-from .table_baseline import Table, Column, DATA_BASE_PATH
+from .table_baseline import Table, Column
 
 class PointCloudTable(Table):
     """ PointCloudTable class
@@ -58,7 +58,7 @@ class PointCloudTable(Table):
             interval = str(interval)
             query += f" AND datetime BETWEEN '{interval}' AND '{before}'"
 
-        conn = sql.connect(DATA_BASE_PATH)
+        conn = sql.connect(self.data_base_path)
         cursor = conn.cursor()
         cursor.execute(query)
         rows = cursor.fetchall()
@@ -98,7 +98,7 @@ class PointCloudTable(Table):
             interval = str(interval)
             query += f" AND datetime BETWEEN '{interval}' AND '{before}'"
 
-        conn = sql.connect(DATA_BASE_PATH)
+        conn = sql.connect(self.data_base_path)
         cursor = conn.cursor()
         cursor.execute(query)
         count = cursor.fetchone()[0]

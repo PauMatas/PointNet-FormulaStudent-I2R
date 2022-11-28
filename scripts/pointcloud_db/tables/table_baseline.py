@@ -3,7 +3,7 @@ from typing import List
 from os.path import dirname, abspath, join
 
 DATA_BASE_PATH = join(dirname(abspath(__file__)),
-                      '../../../data/rosbag2-3dPointCloud.sqlite3')
+                      '../../../data/3dPointCloudDB.sqlite3')
                       
 NUMERIC_TYPES = ['INTEGER', 'REAL', 'NUMERIC', 'DOUBLE', 'FLOAT', 'DECIMAL']
 
@@ -25,6 +25,7 @@ class Table:
         self.name = name
         self.columns = columns
         self.creation_params = creation_params
+        self.data_base_path = DATA_BASE_PATH
 
     def create_table(self):
         """Create a table"""
@@ -33,7 +34,7 @@ class Table:
             [column.create_query for column in self.columns] + self.creation_params
         )
 
-        conn = sql.connect(DATA_BASE_PATH)
+        conn = sql.connect(self.data_base_path)
         cursor = conn.cursor()
         cursor.execute(
             f"CREATE TABLE {self.name}({table_description})"
@@ -52,7 +53,7 @@ class Table:
         ]
         values = ', '.join(values)
 
-        conn = sql.connect(DATA_BASE_PATH)
+        conn = sql.connect(self.data_base_path)
         cursor = conn.cursor()
         cursor.execute(f"INSERT INTO {self.name} VALUES({values})")
         conn.commit()
@@ -61,7 +62,7 @@ class Table:
     def insert_rows(self, rows: List[tuple]):
         """Insert multiple rows into the table"""
 
-        conn = sql.connect(DATA_BASE_PATH)
+        conn = sql.connect(self.data_base_path)
         cursor = conn.cursor()
         question_marks = ', '.join(['?' for _ in range(len(self.columns))])
         query = f"INSERT INTO {self.name} VALUES ({question_marks})"
@@ -78,19 +79,30 @@ class Table:
         query = f"SELECT {projection} FROM {self.name}"
         query += f" ORDER BY {order_by}" if 'order_by' in kwargs else ''
 
-        conn = sql.connect(DATA_BASE_PATH)
+        conn = sql.connect(self.data_base_path)
         cursor = conn.cursor()
         cursor.execute(query)
         rows = cursor.fetchall()
         conn.close()
         return rows
 
-    def delete_all_rows(self):
-        """Delete all rows from the table"""
+    def delete_rows(self, **kwargs):
+        """Delete rows from the table"""
+        conditions = [
+            f"{column.name} = {str(kwargs[column.name])}"
+            if column.type in NUMERIC_TYPES
+            else f"{column.name} = '{str(kwargs[column.name])}'"
+            for column in self.columns
+            if column.name in kwargs
+        ]
+        conditions = ' AND '.join(conditions)
 
-        conn = sql.connect(DATA_BASE_PATH)
+        query = f"DELETE FROM {self.name}"
+        query += f" WHERE {conditions}" if conditions else ''
+
+        conn = sql.connect(self.data_base_path)
         cursor = conn.cursor()
-        cursor.execute(f"DELETE FROM {self.name}")
+        cursor.execute(query)
         conn.commit()
         conn.close()
 
@@ -113,7 +125,7 @@ class Table:
         query += f" WHERE {conditions}" if conditions else ''
         query += f" ORDER BY {order_by}" if 'order_by' in kwargs else ''
 
-        conn = sql.connect(DATA_BASE_PATH)
+        conn = sql.connect(self.data_base_path)
         cursor = conn.cursor()
         cursor.execute(query)
         rows = cursor.fetchall()

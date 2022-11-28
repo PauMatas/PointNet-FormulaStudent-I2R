@@ -1,6 +1,11 @@
 from datetime import datetime, timedelta
 
+
 from .table_baseline import Table, Column
+from .point_cloud import PointCloudTable
+from .pose import PoseTable
+from .cone_position import ConePositionTable
+from .no_cone_position import NoConePositionTable
 
 class RunTable(Table):
     """ RunTable class
@@ -37,3 +42,17 @@ class RunTable(Table):
                 kwargs[column.name] = None
 
         super().insert_row(**kwargs)
+
+    def delete_rows(self, **kwargs):
+        """Delete a run from the database."""
+        kwargs['projection'] = ['name', 'filename']
+        cascade_keys = self.filter(**kwargs)
+        for name, filename in cascade_keys:
+            PointCloudTable().delete_rows(run_name=name, filename=filename)
+            PoseTable().delete_rows(run_name=name, filename=filename)
+            ConePositionTable().delete_rows(run_name=name, filename=filename)
+            NoConePositionTable().delete_rows(run_name=name, filename=filename)
+        
+        super().delete_rows(**kwargs)
+
+        

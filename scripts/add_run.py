@@ -15,9 +15,6 @@ import pointcloud_db as db
 
 
 START_TIME = None
-# Upper confidence threshold for the cones retrieved by the pcl_filtering node in order to be tagged as no-cones
-NO_CONE_THRESHOLD = 0.5
-
 
 def _time_processed_print(timestamp, quiet: bool):
     """Prints the time processed by the node"""
@@ -118,7 +115,6 @@ def no_cone_position_clbk(no_cone_point, kwargs):
             (observation.centroid.x, observation.centroid.y, observation.centroid.z, run_name, filename)
             for observation
             in no_cone_point.observations
-            if observation.confidence < NO_CONE_THRESHOLD
         ])
 
     _time_processed_print(no_cone_point.header.stamp, quiet)

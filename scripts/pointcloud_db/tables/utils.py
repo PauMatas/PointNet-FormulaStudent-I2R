@@ -78,5 +78,5 @@ def delete_invalid_no_cones():
     """
     no_cone_table = NoConePositionTable()
     no_cones = no_cone_table.read_rows()
-    no_cone_table.delete_all_rows()
+    no_cone_table.delete_rows()
     no_cone_table.insert_rows(no_cones)
