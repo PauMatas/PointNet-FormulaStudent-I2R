@@ -96,6 +96,7 @@ for epoch in range(args.nepoch):
         pred_choice = pred.data.max(1)[1]
         correct = pred_choice.eq(target.data).to(gathering_device).sum()
         wandb.log({"train_loss": loss.item(), "train_accuracy": correct.item() / float(args.batchSize)})
+        print("[%d: %d/%d] train loss: %f accuracy: %f" % (epoch, i, num_batch, loss.item(), correct.item() / float(args.batchSize)))
 
         if i % 10 == 0:
             try:
@@ -112,6 +113,7 @@ for epoch in range(args.nepoch):
             pred_choice = pred.data.max(1)[1]
             correct = pred_choice.eq(target.data).to(gathering_device).sum()
             wandb.log({"validation_loss": loss.item(), "validation_accuracy": correct.item() / float(args.batchSize)})
+            print("[%d: %d/%d] %s loss: %f accuracy: %f" % (epoch, i, num_batch, blue("validation"), loss.item(), correct.item()/float(args.batchSize)))
 
     torch.save(classifier.state_dict(), "%s/cls_model_%d.pth" % (args.outf, epoch))
 
@@ -127,3 +129,4 @@ for data in iter(validation_dataset):
     correct = pred_choice.eq(target.data).to(gathering_device).sum()
     total_correct += correct.item()
     total_validationset += points.size()[0]
+print("final accuracy {}".format(total_correct / float(total_validationset)))
