@@ -1,3 +1,6 @@
+# Environment #
+.env
+
 # Python #
 __pycache__/
 
@@ -15,3 +18,18 @@ __pycache__/
 
 # VS Code #
 .vscode
+
+# Shapenet #
+shapenetcore_partanno_segmentation_benchmark_v0/
+shapenetcore_partanno_segmentation_benchmark_v0.zip
+
+# wandb #
+wandb/
+
+# Models #
+*.pth
+
+# Private #
+scripts/logs
+slurm-*.out
+real_train.sh

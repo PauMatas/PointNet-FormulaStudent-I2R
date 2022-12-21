@@ -38,6 +38,7 @@ class BoundingBox:
     def __init__(self, position: Tuple[float, float, float], points: List[List[float]] = []):
         self.position = self.Point(*position)
         self.bounds = self.Bounds(*position)
+        self.points = []
         self.xs = []
         self.ys = []
         self.zs = []
@@ -48,6 +49,9 @@ class BoundingBox:
             self.xs.append(p.x)
             self.ys.append(p.y)
             self.zs.append(p.z)
+
+    def tuple_points(self):
+        return [(p.x, p.y, p.z) for p in self.points]
 
     def center(self):
         """Centers the bounding box to origen"""
@@ -60,7 +64,7 @@ class BoundingBox:
     def sample(self, n: int):
         """Samples n points from the bounding box"""
         if len(self.points) > 0:
-            self.points = np.array(self.points)[np.random.choice(len(self.points), n, replace=(len(self.points) < n)), :]
+            self.points = np.array(self.points)[np.random.choice(len(self.points), n, replace=(len(self.points) < n))]
 
     def __contains__(self, contained: Union[Tuple[float, float, float], 'BoundingBox']) -> bool:
         if isinstance(contained, tuple) and len(contained) == 3:
@@ -78,3 +82,6 @@ class BoundingBox:
 
     def __str__(self):
         return f'BoundingBox(position={self.position}, n_points={len(self.points)})'
+
+    def __bool__(self):
+        return len(self.points) > 0
