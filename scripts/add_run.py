@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 
 from os import path
+import sys
 import rospy
-import logging
 from datetime import datetime
 from argparse import ArgumentParser
 from nav_msgs.msg import Odometry
@@ -11,10 +11,13 @@ import sensor_msgs.point_cloud2 as pc2
 from geometry_msgs.msg import PointStamped
 
 from as_msgs.msg import ObservationArray
-import pointcloud_db as db
+sys.path.append(path.join(path.dirname(__file__), '../src/pointnet/'))
+from src.interfaces.database import SQLiteProxy
 
 
 START_TIME = None
+DB_PATH = path.join(path.dirname(path.abspath(__file__)), '../src/pointnet/data/database.sqlite3')
+DB_PROXY = SQLiteProxy(db_path=DB_PATH)
 
 def _time_processed_print(timestamp, quiet: bool):
     """Prints the time processed by the node"""
@@ -35,7 +38,6 @@ def _time_processed_print(timestamp, quiet: bool):
 def pointcloud_subscriber_clbk(last_pointcloud: PointCloud2, kwargs):
     """Callback function for the point cloud subscriber"""
     run_name = kwargs['run_name']
-    filename = kwargs['filename']
     quiet = kwargs['quiet']
 
     pointcloud_generator = pc2.read_points(
@@ -44,10 +46,9 @@ def pointcloud_subscriber_clbk(last_pointcloud: PointCloud2, kwargs):
         skip_nans=True
     )
 
-    pointcloud_table = db.PointCloudTable()
-    pointcloud_table.insert_rows(
+    DB_PROXY.get_point_clouds().insert(
         [
-            (x, y, z, datetime.fromtimestamp(timestamp), run_name, filename)
+            (x, y, z, datetime.fromtimestamp(timestamp), run_name)
             for x, y, z, timestamp
             in pointcloud_generator
         ])
@@ -58,7 +59,6 @@ def pointcloud_subscriber_clbk(last_pointcloud: PointCloud2, kwargs):
 def position_subscriber_clbk(last_odom, kwargs):
     """Callback function for the position subscriber"""
     run_name = kwargs['run_name']
-    filename = kwargs['filename']
     quiet = kwargs['quiet']
 
     # Attribute Selection
@@ -76,12 +76,10 @@ def position_subscriber_clbk(last_odom, kwargs):
     # Get time from stamp in seconds
     odom_time = datetime.fromtimestamp(int(str(timestamp)) / 1000000000)
 
-    position_table = db.PoseTable()
-    position_table.insert_rows(
-        [
+    DB_PROXY.get_positions().insert([
             (pos_x, pos_y, pos_z,
              ori_x, ori_y, ori_z, ori_w,
-             odom_time, run_name, filename)
+             odom_time, run_name)
         ])
 
     _time_processed_print(timestamp, quiet)
@@ -90,15 +88,13 @@ def position_subscriber_clbk(last_odom, kwargs):
 def cone_position_clbk(cone_point, kwargs):
     """Callback function for the cone position subscriber"""
     run_name = kwargs['run_name']
-    filename = kwargs['filename']
     quiet = kwargs['quiet']
 
     x = cone_point.point.x
     y = cone_point.point.y
     z = cone_point.point.z
 
-    cone_table = db.ConePositionTable()
-    cone_table.insert_row(x=x, y=y, z=z, run_name=run_name, filename=filename)
+    DB_PROXY.get_cones().insert(x=x, y=y, z=z, run_name=run_name)
 
     _time_processed_print(cone_point.header.stamp, quiet)
 
@@ -106,13 +102,11 @@ def cone_position_clbk(cone_point, kwargs):
 def no_cone_position_clbk(no_cone_point, kwargs):
     """Callback function for the no cone position subscriber"""
     run_name = kwargs['run_name']
-    filename = kwargs['filename']
     quiet = kwargs['quiet']
 
-    no_cone_table = db.NoConePositionTable()
-    no_cone_table.insert_rows(
+    db = DB_PROXY.get_no_cones().insert(
         [
-            (observation.centroid.x, observation.centroid.y, observation.centroid.z, run_name, filename)
+            (observation.centroid.x, observation.centroid.y, observation.centroid.z, run_name)
             for observation
             in no_cone_point.observations
         ])
@@ -133,7 +127,7 @@ def main():
     args = parser.parse_args()
 
     filename = path.basename(args.path)
-    db.RunTable().insert_row(name=args.run_name, filename=filename)
+    DB_PROXY.get_runs().insert(name=args.run_name, filename=filename)
 
     rospy.init_node('add_run')
 
@@ -142,19 +136,19 @@ def main():
 
     # LiDAR Output Subscriber
     rospy.Subscriber('limovelo/full_pcl', PointCloud2,
-                     pointcloud_subscriber_clbk, {'run_name': args.run_name, 'filename': filename, 'quiet': args.quiet}, buff_size=10000)
+                     pointcloud_subscriber_clbk, {'run_name': args.run_name, 'quiet': args.quiet}, buff_size=10000)
 
     # LIMOVelo State Subscriber
     rospy.Subscriber('limovelo/state', Odometry,
-                     position_subscriber_clbk, {'run_name': args.run_name, 'filename': filename, 'quiet': args.quiet}, buff_size=10000)
+                     position_subscriber_clbk, {'run_name': args.run_name, 'quiet': args.quiet}, buff_size=10000)
 
     # Ground Truth Cone Point
     rospy.Subscriber('/clicked_point', PointStamped,
-                     cone_position_clbk, {'run_name': args.run_name, 'filename': filename, 'quiet': args.quiet}, buff_size=10000)
+                     cone_position_clbk, {'run_name': args.run_name, 'quiet': args.quiet}, buff_size=10000)
 
     # Ground Truth No-Cone Point
     rospy.Subscriber('/AS/P/pcl_filtering/observations',
-                     ObservationArray, no_cone_position_clbk, {'run_name': args.run_name, 'filename': filename, 'quiet': args.quiet}, buff_size=10000)
+                     ObservationArray, no_cone_position_clbk, {'run_name': args.run_name, 'quiet': args.quiet}, buff_size=10000)
 
     rospy.spin()
 
