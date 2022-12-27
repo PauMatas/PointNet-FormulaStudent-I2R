@@ -94,6 +94,31 @@ class SQLitePointCloudsProxy(SQLiteBaseProxy, AbstractPointCloudsProxy):
         
         super().__init__(db_path, table_name, columns, creation_params=creation_params, no_id=True)
 
+    def read(self, before: datetime = None, delta: int = 100, **kwargs) -> List[tuple]:
+        """Read rows from the table"""
+        if before is not None and 'datetime' in kwargs:
+            raise ValueError('Cannot specify both "before" and "datetime" arguments')
+        if before is None:
+            return super().read(**kwargs)
+        else:
+            conditions = parse_query_filters(kwargs, self._columns)
+            projection = parse_additional_query_arguments(kwargs=kwargs, arg='projection', not_found='*')
+            order_by = parse_additional_query_arguments(kwargs=kwargs, arg='order_by')
+
+            query = f'SELECT {projection} FROM {self._table_name}'
+            query += f' WHERE {conditions} AND ' if conditions else ' WHERE '
+
+            if delta is None:
+                query += f"datetime <= '{before}'"
+            else:
+                interval = datetime.strptime(before, '%Y-%m-%d %H:%M:%S.%f') - timedelta(milliseconds=delta)
+                interval = str(interval)
+                query += f"datetime BETWEEN '{interval}' AND '{before}'"
+
+            query += f' ORDER BY {order_by}' if order_by is not None else ''
+
+            return execute_query(db_path=self._db_path, query=query, fetch_result=True)
+
     def extract_bounding_boxes(self, run: str = None, only_sizes: bool = False, no_cones: bool = False, **kwargs) -> List[Union[BoundingBox, int]]:
         """Extract bounding boxes (or their sizes) from the table"""
 
@@ -209,6 +234,26 @@ class SQLiteConesProxy(SQLiteBaseProxy, AbstractConesProxy):
         ]
         
         super().__init__(db_path, table_name, columns)
+
+    def read(self, visible_check: bool = False, **kwargs):
+        """Read rows from the table"""
+        cones = super().read(**kwargs)
+        if visible_check:
+            if 'before' in kwargs:
+                cones = self._check_visibility(cones, kwargs['before'], kwargs.get('delta', 100), self._db_path)
+            else:
+                raise ValueError("If visible_check is True, before must be given")
+        return cones
+
+    def _check_visibility(self, cones: List[tuple], before: datetime, delta: int, db_path: str) -> List[tuple]:
+        """Check if the cones are visible from the given position"""
+        result = []
+        n_points = SQLitePointCloudsProxy(db_path).create_bounding_boxes(cones, [0, 0, 0, before], delta=delta, only_sizes=True, sample_size=None)
+        for cone, n_points in zip(cones, n_points):
+            if n_points > 0:
+                result.append(cone)
+        return result
+        
 
 
 class SQLiteNoConesProxy(SQLiteBaseProxy, AbstractNoConesProxy):

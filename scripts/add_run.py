@@ -104,7 +104,7 @@ def no_cone_position_clbk(no_cone_point, kwargs):
     run_name = kwargs['run_name']
     quiet = kwargs['quiet']
 
-    db = DB_PROXY.get_no_cones().insert(
+    DB_PROXY.get_no_cones().insert(
         [
             (observation.centroid.x, observation.centroid.y, observation.centroid.z, run_name)
             for observation
@@ -124,6 +124,7 @@ def main():
                         help="Name of the run to be added to the database", required=True, type=str)
     parser.add_argument("-q", "--quiet", dest="quiet",
                         help="don't print status messages to stdout", default=False)
+    parser.add_argument("-c", "--car", dest="car_name", default="xaloc", type=str, help="Name of the car")
     args = parser.parse_args()
 
     filename = path.basename(args.path)
@@ -135,10 +136,12 @@ def main():
         print("Dataset construction node initialised.")
 
     # LiDAR Output Subscriber
+    # 40Hz
     rospy.Subscriber('limovelo/full_pcl', PointCloud2,
                      pointcloud_subscriber_clbk, {'run_name': args.run_name, 'quiet': args.quiet}, buff_size=10000)
 
     # LIMOVelo State Subscriber
+    # 40Hz
     rospy.Subscriber('limovelo/state', Odometry,
                      position_subscriber_clbk, {'run_name': args.run_name, 'quiet': args.quiet}, buff_size=10000)
 
