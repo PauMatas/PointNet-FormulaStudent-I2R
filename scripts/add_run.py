@@ -124,7 +124,6 @@ def main():
                         help="Name of the run to be added to the database", required=True, type=str)
     parser.add_argument("-q", "--quiet", dest="quiet",
                         help="don't print status messages to stdout", default=False)
-    parser.add_argument("-c", "--car", dest="car_name", default="xaloc", type=str, help="Name of the car")
     args = parser.parse_args()
 
     filename = path.basename(args.path)
