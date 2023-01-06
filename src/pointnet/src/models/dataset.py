@@ -1,4 +1,3 @@
-from copy import deepcopy
 import os
 from random import shuffle
 import sys
@@ -16,15 +15,17 @@ class BoundingBoxesBatch(NamedTuple):
     labels: torch.Tensor
 
 
-def get_id_sets(db_proxy: DatabaseProxy) -> List[int]:
-    return db_proxy.get_positions().read(projection=['id'], order_by=['id'])
+def get_id_sets(db_proxy: DatabaseProxy, position_step: int = 1) -> List[int]:
+    all_positions = db_proxy.get_positions().read(projection=['id'], order_by=['id'])
+    shuffle(all_positions)
+    return all_positions[::position_step]
 
 class BoundingBoxesDataset(IterableDataset):
     def __init__(self, db_proxy: DatabaseProxy, batch_size, **kwargs):
         super(BoundingBoxesDataset).__init__()
         self.db_proxy = db_proxy
         self.batch_size = batch_size
-        self.progressive = kwargs.get('progressive', False)
+        self.progressive = kwargs.get('progressive', True)
         self.position_step = kwargs.get('position_step', 100)
         self.delta = kwargs.get('delta', None)
         self.sample_size = kwargs.get('sample_size', None)
@@ -33,7 +34,7 @@ class BoundingBoxesDataset(IterableDataset):
         
     def define_indices(self, indices: Union[None, slice] = None):
         if indices is None:
-            self.position_ids_set = get_id_sets(self.db_proxy)
+            self.position_ids_set = get_id_sets(self.db_proxy, self.position_step)
         elif isinstance(indices, slice):
             self.position_ids_set = set(list(self.position_ids_set)[indices])
         else:
@@ -67,8 +68,7 @@ class BoundingBoxesDataset(IterableDataset):
         cone_bounding_boxes = self.db_proxy.get_point_clouds().create_bounding_boxes(
             positions=positions,
             cones=cones,
-            progressive=self.progressive,
-            position_step=self.position_step,
+            progressive=False,
             delta=self.delta,
             sample_size=self.sample_size,
             centered=self.centered
@@ -77,8 +77,7 @@ class BoundingBoxesDataset(IterableDataset):
         no_cone_bounding_boxes = self.db_proxy.get_point_clouds().create_bounding_boxes(
             positions=positions,
             cones=no_cones,
-            progressive=self.progressive,
-            position_step=self.position_step,
+            progressive=False,
             delta=self.delta,
             sample_size=self.sample_size,
             centered=self.centered
@@ -118,20 +117,6 @@ class BoundingBoxesDataset(IterableDataset):
         return sizes
 
 
-def split_bounding_boxes_dataset(dataset: BoundingBoxesDataset, validation_percentage: float) -> Tuple[BoundingBoxesDataset, BoundingBoxesDataset]:
-    n_positions = len(dataset)
-    validation_size = int(n_positions * validation_percentage)
-    
-    training_dataset = deepcopy(dataset)
-    training_dataset.define_indices(slice(validation_size, n_positions))
-
-    validation_dataset = deepcopy(dataset)
-    validation_dataset.define_indices(slice(0, validation_size))
-
-
-    return training_dataset, validation_dataset
-
-
 class BoundingBoxesQueue:
     def __init__(self, dataset: BoundingBoxesDataset):
         self.dataset = dataset
@@ -140,16 +125,21 @@ class BoundingBoxesQueue:
 
     def expand(self):
         cones, no_cones = self.dataset.get_position_bounding_boxes(self.idx)
-        while len(no_cones) < len(cones):
-            no_cones += no_cones
-        shuffle(no_cones)
-        no_cones = no_cones[:len(cones)]
+        if no_cones:
+            while len(no_cones) < len(cones):
+                no_cones += no_cones
+            shuffle(no_cones)
+            no_cones = no_cones[:len(cones)]
 
-        for cone, no_cone in zip(cones, no_cones):
-            self.queue.append((cone, 1))
-            self.queue.append((no_cone, 0))
+            for cone, no_cone in zip(cones, no_cones):
+                self.queue.append((cone, 1))
+                self.queue.append((no_cone, 0))
+        else:
+            # There aren't no_cones in this position
+            for cone in cones:
+                self.queue.append((cone, 1))
+
         self.idx += 1
-
         shuffle(self.queue)
 
     def split_points_and_labels(self, batch: List[Tuple[BoundingBox, int]]) -> Tuple[List[List[tuple]], List[int]]:
