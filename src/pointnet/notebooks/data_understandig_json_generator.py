@@ -1,16 +1,12 @@
 import os
-import sys
-module_path = os.path.abspath(os.path.join('../src/pointnet/'))
-DB_PATH = os.path.abspath(os.path.join('../src/pointnet/data/database.sqlite3'))
-if module_path not in sys.path:
-    sys.path.append(module_path)
+DB_PATH = os.path.abspath(os.path.join('../data/database.sqlite3'))
 
 import argparse
 from datetime import datetime
 import numpy as np
 from tqdm import tqdm
 
-from src.interfaces.database import SQLiteProxy
+from ..src.interfaces.database import SQLiteProxy
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--position_step", type=int, default=50)
