@@ -31,6 +31,7 @@ parser.add_argument("--feature_transform", action="store_true", help="use featur
 parser.add_argument("--device", type=str, default="cuda", help="select device to execute the training for example cuda|cuda:0|cuda:1 and continuing")
 parser.add_argument("--gathering_device", type=str, default="cpu", help="device for light gathering and saving tasks")
 parser.add_argument("--wandb_api_key", type=str, required=True, help="wandb api key")
+parser.add_argument("--delta", type=int, required=True, help="delta")
 args = parser.parse_args()
 
 blue = lambda x: "\033[94m" + x + "\033[0m"
@@ -45,7 +46,7 @@ if args.dataset_type == "BCNeMotorsport":
         db_proxy=database_proxy,
         batch_size=args.batchSize,
         sample_size=args.num_points,
-        delta = 2000
+        delta = args.delta
     )
     validation_database_proxy = SQLiteProxy(os.path.join(args.dataset, "validation_database.sqlite3"))
     validation_dataset = BoundingBoxesDataset(
@@ -53,7 +54,7 @@ if args.dataset_type == "BCNeMotorsport":
         batch_size=args.batchSize,
         sample_size=args.num_points,
         position_step=1,
-        delta = 2000
+        delta = args.delta
     )
 
 else:
@@ -79,9 +80,12 @@ classifier.to(device)
 num_batch = len(dataset) / args.batchSize
 
 # name with current time
-wandb_name = f"pointnet-delta:2000-sample:{args.num_points}-bs:{args.batchSize}-epochs:{args.nepoch}"
+wandb_name = f"pointnet-delta:{args.delta}-sample:{args.num_points}-bs:{args.batchSize}"
 wandb.login(key=args.wandb_api_key)
-wandb.init(name=wandb_name, project="pointnet-I2R")
+if args.model != "":
+    wandb.init(name=wandb_name, project="pointnet-I2R", resume='allow')
+else:
+    wandb.init(name=wandb_name, project="pointnet-I2R")
 
 for epoch in range(args.nepoch):
     i = 0
@@ -102,9 +106,10 @@ for epoch in range(args.nepoch):
         pred_choice = pred.data.max(1)[1]
         correct = pred_choice.eq(target.data).to(gathering_device).sum()
         wandb.log({"train_loss": loss.item(), "train_accuracy": correct.item() / float(args.batchSize)})
-        print("[%d: %d/%d] train loss: %f accuracy: %f" % (epoch, i, num_batch, loss.item(), correct.item() / float(args.batchSize)))
 
-        if i % 10 == 0:
+        if i % 10 == 0: #print test and execute validation
+            print("[%d: %d/%d] train loss: %f accuracy: %f" % (epoch, i, num_batch, loss.item(), correct.item() / float(args.batchSize)))
+            
             try:
                 data = next(validation)
             except StopIteration:
@@ -123,10 +128,11 @@ for epoch in range(args.nepoch):
 
     scheduler.step()
 
-    torch.save(classifier.state_dict(), f"{args.outf}/cls_model_epoch{epoch}-d:2s-sample:{args.num_points}-bs:{args.batchSize}.pth")
+    torch.save(classifier.state_dict(), f"{args.outf}/cls_model-d:{args.delta}ms-sample:{args.num_points}-bs:{args.batchSize}.pth")
 
-    total_correct = 0
-    total_validationset = 0
+    tp = 0
+    fn = 0
+    fp = 0
     for data in iter(validation_dataset):
         points, target = data
         points = points.transpose(2, 1)
@@ -134,9 +140,16 @@ for epoch in range(args.nepoch):
         classifier = classifier.eval()
         pred, _, _ = classifier(points)
         pred_choice = pred.data.max(1)[1]
-        correct = pred_choice.eq(target.data).to(gathering_device).sum()
-        total_correct += correct.item()
-        total_validationset += points.size()[0]
-    wandb.log({"final_accuracy": total_correct / float(total_validationset)})
+        
+        tp += ((pred_choice == 1) & (target.data == 1)).sum().item()
+        fn += ((pred_choice == 0) & (target.data == 1)).sum().item()
+        fp += ((pred_choice == 1) & (target.data == 0)).sum().item()
 
-print(f"The model {wandb_name} has reached a final accuracy of:\{total_correct / float(total_validationset)}")
+    accuracy = tp / (tp + fn + fp)
+    precision = tp / (tp + fp)
+    recall = tp / (tp + fn)
+    f1_score = (2 * precision * recall) / (precision + recall)
+
+    wandb.log({"final_accuracy": accuracy, "final_precision": precision, "final_recall": recall, "final_f1_score": f1_score})
+
+print(f"The model {wandb_name} has reached a final accuracy of:\{accuracy}")
