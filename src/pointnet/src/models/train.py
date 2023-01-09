@@ -23,7 +23,7 @@ parser.add_argument(
     "--workers", type=int, help="number of data loading workers", default=4)
 parser.add_argument(
     "--nepoch", type=int, default=1, help="number of epochs to train for")
-parser.add_argument("--outf", type=str, default="cls", help="output folder")
+parser.add_argument("--outf", type=str, default="../models", help="output folder")
 parser.add_argument("--model", type=str, default="", help="model path")
 parser.add_argument("--dataset", type=str, required=True, help="dataset path")
 parser.add_argument("--dataset_type", type=str, default="BCNeMotorsport", help="dataset type shapenet|modelnet40|BCNeMotorsport")
