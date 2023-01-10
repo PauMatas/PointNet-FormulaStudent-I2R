@@ -8,7 +8,7 @@ The main task to solve with PointNet is the filtering of proposals received from
 
 ![bounding_boxes_to_be_classified](https://github.com/PauMatas/PointNet-FormulaStudent-I2R/blob/main/doc/observations.png)
 
-[^1]: Read the full study [here](https://github.com/PauMatas/PointNet-FormulaStudent-I2R/blob/main/doc/Formula Student car perception with PointNet - I2R - Pau Matas Albiol.pdf).
+[^1]: Read the full study [here](https://github.com/PauMatas/PointNet-FormulaStudent-I2R/blob/main/doc/Formula%20Student%20car%20perception%20with%20PointNet%20-%20I2R%20-%20Pau%20Matas%20Albiol.pdf).
 [^2]: Received from a LiDAR sensor.
 
 ## Usage
