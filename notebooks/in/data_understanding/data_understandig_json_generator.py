@@ -6,7 +6,7 @@ from datetime import datetime
 import numpy as np
 from tqdm import tqdm
 
-from ..src.interfaces.database import SQLiteProxy
+from ....src.interfaces.database import SQLiteProxy
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--position_step", type=int, default=50)
@@ -46,5 +46,5 @@ for run in db.get_runs().read(projection=['name']):
 import json
 
 
-with open(f'./out/data_understanding-{args.delta}.json', 'w') as f:
+with open(f'./data_understanding-{args.delta}.json', 'w') as f:
     json.dump(result, f)
