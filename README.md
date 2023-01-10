@@ -2,13 +2,14 @@
 
 ## Introduction
 
-This repository contains the code to support a study of the use of [PointNet](https://github.com/charlesq34/pointnet) as perceiver in a [Formula Student (FS) car](https://bcnemotorsport.upc.edu). Here there are the tools to study the performance of this algorithm introduced in the perception pipeline of the FS team.
+This repository contains the code to support a study[^1] of the use of [PointNet](https://github.com/charlesq34/pointnet) as perceiver in a [Formula Student (FS) car](https://bcnemotorsport.upc.edu). Here there are the tools to study the performance of this algorithm introduced in the perception pipeline of the FS team.
 
-The main task to solve with PointNet is the filtering of proposals received from the previous tasks of the pipeline. These proposals are regions of a point cloud [^1] with high probability to be a real cone. We use PointNet as a classifier with the aim of identifying only those proposals that are definitely cones.
+The main task to solve with PointNet is the filtering of proposals received from the previous tasks of the pipeline. These proposals are regions of a point cloud[^2] with high probability to be a real cone. We use PointNet as a classifier with the aim of identifying only those proposals that are definitely cones.
 
 ![bounding_boxes_to_be_classified](https://github.com/PauMatas/PointNet-FormulaStudent-I2R/blob/main/doc/observations.png)
 
-[^1]: Received from a LiDAR sensor.
+[^1]: Read the full study [here](https://github.com/PauMatas/PointNet-FormulaStudent-I2R/blob/main/doc/Formula Student car perception with PointNet - I2R - Pau Matas Albiol.pdf).
+[^2]: Received from a LiDAR sensor.
 
 ## Usage
 
