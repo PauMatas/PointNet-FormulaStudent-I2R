@@ -1,4 +1,4 @@
-# Formula Student car perception with PointNet
+# Formula Student car perception with PointNet :checkered_flag: :small_red_triangle: :mag:
 
 ## Introduction
 
@@ -42,12 +42,12 @@ cd scripts
 
 You can also find in the repository a directory with Notebooks useful for understanding the problem.
 
-- `map_plot.ipynb` is a notebook to visualize the tracks defined by the cones for each run. It also plots the no cones locations. Its outputs can also be found in `notebooks/out/map_plot/`.
+- [`map_plot.ipynb`](https://github.com/PauMatas/PointNet-FormulaStudent-I2R/blob/main/notebooks/map_plot.ipynb) is a notebook to visualize the tracks defined by the cones for each run. It also plots the no cones locations. Its outputs can also be found in `notebooks/out/map_plot/`.
 
 ![map_plot](https://github.com/PauMatas/PointNet-FormulaStudent-I2R/blob/main/notebooks/out/map_plot/manual_follat.png)
 
-- `data_understanding.ipynb` allows us to generate a important plot for the research. This plot shows the average number of points in every bounding box with respect to its distance to the car.
+- [`data_understanding.ipynb`](https://github.com/PauMatas/PointNet-FormulaStudent-I2R/blob/main/notebooks/data_understanding.ipynb) allows us to generate a important plot for the research. This plot shows the average number of points in every bounding box with respect to its distance to the car.
 
-- `cone_viz.ipynb` shows the bounding boxes corresponding to cone locations as 3-dimensional scatter plots.
+- [`cone_viz.ipynb`](https://github.com/PauMatas/PointNet-FormulaStudent-I2R/blob/main/notebooks/cone_viz.ipynb) shows the bounding boxes corresponding to cone locations as 3-dimensional scatter plots.
 
-- Finally, `modelnet_viz.ipynb` and `pointnet_training.ipynb` are used to visualize the meshes from the dataset ModelNet40 (and their samples), and to train PointNet with the data of ModelNet40, respectively.
+- Finally, [`modelnet_viz.ipynb`](https://github.com/PauMatas/PointNet-FormulaStudent-I2R/blob/main/notebooks/modelnet_viz.ipynb) and [`pointnet_training.ipynb`](https://github.com/PauMatas/PointNet-FormulaStudent-I2R/blob/main/notebooks/pointnet_training.ipynb) are used to visualize the meshes from the dataset ModelNet40 (and their samples), and to train PointNet with the data of ModelNet40, respectively.
