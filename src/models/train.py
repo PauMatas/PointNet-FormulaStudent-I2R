@@ -25,13 +25,13 @@ parser.add_argument(
     "--nepoch", type=int, default=1, help="number of epochs to train for")
 parser.add_argument("--outf", type=str, default="../models", help="output folder")
 parser.add_argument("--model", type=str, default="", help="model path")
-parser.add_argument("--dataset", type=str, required=True, help="dataset path")
+parser.add_argument("--dataset", type=str, default="../../data", help="dataset path")
 parser.add_argument("--dataset_type", type=str, default="BCNeMotorsport", help="dataset type shapenet|modelnet40|BCNeMotorsport")
 parser.add_argument("--feature_transform", action="store_true", help="use feature transform")
 parser.add_argument("--device", type=str, default="cuda", help="select device to execute the training for example cuda|cuda:0|cuda:1 and continuing")
 parser.add_argument("--gathering_device", type=str, default="cpu", help="device for light gathering and saving tasks")
-parser.add_argument("--wandb_api_key", type=str, required=True, help="wandb api key")
-parser.add_argument("--delta", type=int, required=True, help="delta")
+parser.add_argument("--wandb_api_key", type=str, default=None, help="wandb api key")
+parser.add_argument("--delta", type=int, default=1000, help="time interval")
 args = parser.parse_args()
 
 blue = lambda x: "\033[94m" + x + "\033[0m"
@@ -80,12 +80,13 @@ classifier.to(device)
 num_batch = len(dataset) / args.batchSize
 
 # name with current time
-wandb_name = f"pointnet-delta:{args.delta}-sample:{args.num_points}-bs:{args.batchSize}"
-wandb.login(key=args.wandb_api_key)
-if args.model != "":
-    wandb.init(name=wandb_name, project="pointnet-I2R", resume='allow')
-else:
-    wandb.init(name=wandb_name, project="pointnet-I2R")
+if args.wandb_api_key is not None:
+    wandb_name = f"pointnet-delta:{args.delta}-sample:{args.num_points}-bs:{args.batchSize}"
+    wandb.login(key=args.wandb_api_key)
+    if args.model != "":
+        wandb.init(name=wandb_name, project="pointnet-I2R", resume='allow')
+    else:
+        wandb.init(name=wandb_name, project="pointnet-I2R")
 
 for epoch in range(args.nepoch):
     i = 0
@@ -105,7 +106,8 @@ for epoch in range(args.nepoch):
         optimizer.step()
         pred_choice = pred.data.max(1)[1]
         correct = pred_choice.eq(target.data).to(gathering_device).sum()
-        wandb.log({"train_loss": loss.item(), "train_accuracy": correct.item() / float(args.batchSize)})
+        if args.wandb_api_key is not None:    
+            wandb.log({"train_loss": loss.item(), "train_accuracy": correct.item() / float(args.batchSize)})
 
         if i % 10 == 0: #print test and execute validation
             print("[%d: %d/%d] train loss: %f accuracy: %f" % (epoch, i, num_batch, loss.item(), correct.item() / float(args.batchSize)))
@@ -123,7 +125,8 @@ for epoch in range(args.nepoch):
             loss = F.nll_loss(pred, target)
             pred_choice = pred.data.max(1)[1]
             correct = pred_choice.eq(target.data).to(gathering_device).sum()
-            wandb.log({"validation_loss": loss.item(), "validation_accuracy": correct.item() / float(args.batchSize)})
+            if args.wandb_api_key is not None:    
+                wandb.log({"validation_loss": loss.item(), "validation_accuracy": correct.item() / float(args.batchSize)})
             print("[%d: %d/%d] VALIDATION loss: %f accuracy: %f" % (epoch, i, num_batch, loss.item(), correct.item()/float(args.batchSize)))
 
     scheduler.step()
@@ -150,6 +153,7 @@ for epoch in range(args.nepoch):
     recall = tp / (tp + fn)
     f1_score = (2 * precision * recall) / (precision + recall)
 
-    wandb.log({"final_accuracy": accuracy, "final_precision": precision, "final_recall": recall, "final_f1_score": f1_score})
+    if args.wandb_api_key is not None:
+        wandb.log({"final_accuracy": accuracy, "final_precision": precision, "final_recall": recall, "final_f1_score": f1_score})
 
 print(f"The model {wandb_name} has reached a final accuracy of:\{accuracy}")
