@@ -6,7 +6,7 @@ This repository contains the code to support a study of the use of [PointNet](ht
 
 The main task to solve with PointNet is the filtering of proposals received from the previous tasks of the pipeline. These proposals are regions of a point cloud [^1] with high probability to be a real cone. We use PointNet as a classifier with the aim of identifying only those proposals that are definitely cones.
 
-![bounding_boxes_to_be_classified](https://github.com/PauMatas/PointNet-FormulaStudent-I2R/blob/master/doc/observations.png)
+![bounding_boxes_to_be_classified](https://github.com/PauMatas/PointNet-FormulaStudent-I2R/blob/main/doc/observations.png)
 
 [^1]: Received from a LiDAR sensor.
 
@@ -44,7 +44,7 @@ You can also find in the repository a directory with Notebooks useful for unders
 
 - `map_plot.ipynb` is a notebook to visualize the tracks defined by the cones for each run. It also plots the no cones locations. Its outputs can also be found in `notebooks/out/map_plot/`.
 
-![map_plot](https://github.com/PauMatas/PointNet-FormulaStudent-I2R/blob/master/notebooks/out/map_plot/manual_follat.png)
+![map_plot](https://github.com/PauMatas/PointNet-FormulaStudent-I2R/blob/main/notebooks/out/map_plot/manual_follat.png)
 
 - `data_understanding.ipynb` allows us to generate a important plot for the research. This plot shows the average number of points in every bounding box with respect to its distance to the car.
 
